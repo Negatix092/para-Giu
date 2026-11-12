@@ -338,11 +338,16 @@ let t0 = performance.now();
 // ---------- música chiptune original ----------
 let ac, master, musicGain, nextTime = 0, step = 0, muted = false;
 const N = n => 440 * Math.pow(2, (n - 69) / 12);
-const MEL = [76,79,81,79, 76,74,72,74, 76,79,81,84, 83,81,79,0,
-             77,81,84,81, 79,76,74,76, 72,74,76,79, 76,74,72,0];
-const BASS = [48, 45, 41, 43];
-const EIGHTH = 0.27;
-
+// Canon en Re — Johann Pachelbel (dominio público), arreglo chiptune
+const EIGHTH = 0.36;
+const BASS = [50, 45, 47, 42, 43, 38, 43, 45];                 // Re La Si Fa# Sol Re Sol La
+const ARP = [[62,66,69],[57,61,64],[59,62,66],[54,57,61],[55,59,62],[62,66,69],[55,59,62],[57,61,64]];
+const Q = a => a.flatMap(n => [n, null]);                       // negras
+const PARTS = [
+  Q([78, 76, 74, 73, 71, 69, 71, 73]),                          // Fa# Mi Re Do# Si La Si Do#
+  Q([74, 73, 71, 69, 67, 66, 67, 64]),                          // Re Do# Si La Sol Fa# Sol Mi
+  [74, 78, 81, 79, 78, 74, 78, 76, 74, 71, 74, 81, 79, 83, 81, 79] // corcheas
+];
 function note(freq, t, dur, type, vol, dest){
   const o = ac.createOscillator(), g = ac.createGain();
   o.type = type; o.frequency.value = freq;
@@ -354,9 +359,17 @@ function note(freq, t, dur, type, vol, dest){
 }
 function schedule(){
   while (nextTime < ac.currentTime + 0.15){
-    const m = MEL[step % 32];
-    if (m) note(N(m), nextTime, EIGHTH * 0.9, 'square', 0.045, musicGain);
-    if (step % 2 === 0) note(N(BASS[Math.floor(step / 8) % 4]), nextTime, EIGHTH * 1.8, 'triangle', 0.13, musicGain);
+    const cyc = Math.floor(step / 16), pos = step % 16, chord = pos >> 1;
+    const part = cyc === 0 ? null : PARTS[(cyc - 1) % 3];
+    if (pos % 2 === 0){
+      note(N(BASS[chord]), nextTime, EIGHTH * 1.9, 'triangle', 0.14, musicGain);
+      const tri = ARP[chord];
+      [0, 1, 2, 1].forEach((k, i) => note(N(tri[k]), nextTime + i * EIGHTH / 2, EIGHTH * 0.45, 'square', 0.014, musicGain));
+    }
+    if (part && part[pos]){
+      const long = part[pos + 1] === null;
+      note(N(part[pos]), nextTime, EIGHTH * (long ? 1.9 : 0.9), 'square', 0.04, musicGain);
+    }
     nextTime += EIGHTH; step++;
   }
 }
