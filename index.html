@@ -15,8 +15,10 @@
   canvas.color{filter:none}
   #dialog{position:absolute;left:4%;right:4%;top:71%;bottom:3%;background:#fff;color:#1b1b2f;
     border:calc(var(--u)*1) solid #1b1b2f;box-shadow:0 0 0 calc(var(--u)*1) #fff, inset 0 0 0 calc(var(--u)*.5) #74acdf;
-    padding:calc(var(--u)*3);font-size:var(--fs);line-height:1.9;opacity:0;transition:opacity .6s}
+    padding:calc(var(--u)*3);font-size:var(--fs);line-height:1.75;opacity:0;transition:opacity .6s}
   #dialog.show{opacity:1}
+  #text{white-space:pre-line}
+  #hdr{color:#d98a00;font-size:calc(var(--fs)*.8);margin-bottom:calc(var(--u)*1.5);display:none}
   #arrow{position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*2);animation:blink .8s steps(1) infinite;display:none}
   #replay{position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*2.5);font:inherit;font-size:calc(var(--fs)*.8);
     background:#74acdf;color:#fff;border:calc(var(--u)*.6) solid #1b1b2f;padding:calc(var(--u)*1.2) calc(var(--u)*2);display:none;cursor:pointer}
@@ -35,7 +37,7 @@
 <body>
 <div id="stage">
   <canvas id="c" width="96" height="170"></canvas>
-  <div id="dialog"><span id="text"></span><span id="arrow">▼</span><button id="replay">▶ otra vez</button></div>
+  <div id="dialog"><div id="hdr"></div><span id="text"></span><span id="arrow">▼</span><button id="replay">▶ otra vez</button></div>
   <button id="mute">♪</button>
   <div id="start">
     <div class="t1">PARA GIU</div>
@@ -47,6 +49,18 @@
 
 <script>
 // ================== MENSAJE (edítalo aquí) ==================
+const INTRO = "Psst... mira hacia arriba ✦";
+const FACTS = [
+  { scene: 'cometa', h: '✦ 12 DE NOVIEMBRE, 2014', p: [
+    "Por primera vez, una nave aterrizó en un cometa: Philae.",
+    "Viajó 10 años por el espacio... y al tocarlo, ¡rebotó!" ] },
+  { scene: 'doce', h: '✦ EL NÚMERO 12', p: [
+    "12 × 12 = 144\n21 × 21 = 441",
+    "Volteas el número... ¡y el resultado también se voltea!" ] },
+  { scene: 'escorpio', h: '✦ ESCORPIO', p: [
+    "Su estrella más brillante es Antares, el «corazón del escorpión».",
+    "Una estrella roja unas 700 veces más ancha que el Sol." ] }
+];
 const LINES = [
   "Alegría por ti, Giu.",
   "Porque en esta vida, todo es mejor contigo cerca...",
@@ -67,7 +81,7 @@ function fit(){
   stage.style.width = W * s + 'px';
   stage.style.height = H * s + 'px';
   stage.style.setProperty('--u', s + 'px');
-  stage.style.setProperty('--fs', (W * s * 0.04) + 'px');
+  stage.style.setProperty('--fs', (W * s * 0.037) + 'px');
 }
 addEventListener('resize', fit); fit();
 
@@ -148,6 +162,70 @@ function sunOrHeart(cx, cy, t){
   }
 }
 
+// ---------- cielo nocturno con datos ----------
+let scene = null, lastScene = null, sceneStart = 0, nightA = 0;
+const STARS = Array.from({ length: 40 }, () => ({ x: Math.random() * W | 0, y: Math.random() * 104 | 0, p: Math.random() * 6 }));
+function line(x0, y0, x1, y1, c){
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let i = 0; i <= n; i++) px(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, 1, 1, c);
+}
+function disc(cx, cy, r, c){
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+    if (dx * dx + dy * dy <= r * r) px(cx + dx, cy + dy, 1, 1, c);
+}
+const DIG = {
+  '1': ["..X..", ".XX..", "..X..", "..X..", "..X..", "..X..", ".XXX."],
+  '2': [".XXX.", "X...X", "....X", "..XX.", ".X...", "X....", "XXXXX"]
+};
+function drawComet(st){
+  // cola
+  for (let i = 0; i < 30; i++){
+    const y = 44 - i * 0.55 + Math.sin(i * .7 + st * 3);
+    px(51 - i, y, 1, i < 10 ? 2 : 1, i % 3 ? '#9fd3ff' : '#ffffff');
+  }
+  // núcleo con forma de patito (dos lóbulos)
+  disc(58, 46, 6, '#8d929c'); disc(66, 38, 4, '#8d929c');
+  px(55, 47, 2, 1, '#6b707a'); px(60, 50, 1, 1, '#6b707a'); px(67, 37, 1, 1, '#6b707a');
+  // Philae: baja, toca y rebota
+  const c = st % 7; let x, y;
+  if (c < 3){ x = 80 - 6 * c; y = 4 + 11.3 * c; }
+  else if (c < 4.6){ const k = (c - 3) / 1.6; x = 62 - 6 * k; y = 38 - Math.sin(k * Math.PI) * 14; }
+  else { x = 56; y = 38; }
+  px(x - 1, y - 1, 3, 2, '#ffffff'); px(x - 3, y - 1, 2, 1, '#5ab0ff'); px(x + 2, y - 1, 2, 1, '#5ab0ff');
+  px(x - 1, y + 1, 1, 1, '#cccccc'); px(x + 1, y + 1, 1, 1, '#cccccc');
+}
+function drawTwelve(t){
+  ['1', '2'].forEach((d, k) => DIG[d].forEach((r, j) => [...r].forEach((ch, i) => {
+    if (ch === 'X') px(25 + k * 26 + i * 4, 24 + j * 4, 3, 3, Math.sin(t * 3 + i + j + k * 2) > 0 ? SUN : '#fff3b0');
+  })));
+}
+function drawScorpius(t){
+  const D = '#4d5a99', head = [72, 24];
+  const claws = [[78, 12], [84, 22], [78, 34]];
+  const body = [head, [62, 32], [56, 42], [52, 52], [50, 62], [52, 72], [58, 80], [66, 82], [72, 78], [70, 71]];
+  claws.forEach(s => line(head[0], head[1], s[0], s[1], D));
+  for (let i = 0; i < body.length - 1; i++) line(body[i][0], body[i][1], body[i + 1][0], body[i + 1][1], D);
+  [...claws, ...body].forEach((s, i) => { if (i !== 4) px(s[0], s[1], 1, 1, '#ffffff'); });
+  // Antares: el corazón del escorpión, latiendo
+  const beat = (t * 1.6) % 1 < .25;
+  sprite(MINI_HEART, { X: '#ff4a3d' }, beat ? 59 : 60, beat ? 30 : 30.5, 1);
+  if (beat){ px(57, 32, 1, 1, '#ff9a8a'); px(65, 32, 1, 1, '#ff9a8a'); px(62, 28, 1, 1, '#ff9a8a'); }
+}
+function drawNight(t){
+  nightA += ((scene ? 1 : 0) - nightA) * 0.04;
+  if (nightA < 0.01) return;
+  ctx.globalAlpha = nightA;
+  px(0, 0, W, 106, '#141a3a');
+  STARS.forEach(s => { if (Math.sin(t * 2 + s.p * 3) > -0.4) px(s.x, s.y, 1, 1, '#cfd8ff'); });
+  const sc = scene || lastScene, st = t - sceneStart;
+  if (sc === 'cometa') drawComet(st);
+  if (sc === 'doce') drawTwelve(t);
+  if (sc === 'escorpio') drawScorpius(t);
+  ctx.globalAlpha = 1;
+}
+let nowT = 0;
+function setScene(s){ if (s) lastScene = s; scene = s; sceneStart = nowT; }
+
 function cloud(x, y){
   px(x + 3, y - 1, 5, 1, WHT); px(x + 1, y, 10, 1, WHT); px(x, y + 1, 13, 2, WHT);
 }
@@ -161,6 +239,7 @@ function draw(t){
     cloud(x, 8 + k * 9);
   }
   sunOrHeart(48, 52, t);
+  drawNight(t);
 
   // mesa
   px(0, 106, W, 3, '#a0683a'); px(0, 109, W, 9, '#6b4220');
@@ -188,7 +267,7 @@ function draw(t){
       return p.y > 38;
     } else {
       p.y -= 0.25; p.x += 0.12 * p.dir;
-      sprite(NOTE, { X: DARK }, p.x + Math.sin(age * 4) * 1.5, p.y);
+      sprite(NOTE, { X: nightA > .5 ? '#ffffff' : DARK }, p.x + Math.sin(age * 4) * 1.5, p.y);
       return p.y > 30;
     }
   });
@@ -211,7 +290,7 @@ function burst(){ for (let i = 0; i < 60; i++) confetti.push(newConfetti(Math.ra
 
 let t0 = performance.now();
 (function loop(now){
-  draw((now - t0) / 1000);
+  nowT = (now - t0) / 1000; draw(nowT);
   requestAnimationFrame(loop);
 })(t0);
 
@@ -255,7 +334,7 @@ function setMusic(on){
 }
 function blip(){
   if (!ac) return;
-  note(700 + Math.random() * 200, ac.currentTime, 0.04, 'square', 0.025, master);
+  note(700 + Math.random() * 200, ac.currentTime, 0.03, 'triangle', 0.035, master);
 }
 muteBtn.onclick = e => {
   e.stopPropagation(); muted = !muted;
@@ -267,7 +346,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 let skip = false;
 dialog.onclick = () => { skip = true; };
 
-async function typeLine(s){
+const hdrEl = document.getElementById('hdr');
+async function typeLine(s, header = ''){
+  hdrEl.textContent = header; hdrEl.style.display = header ? 'block' : 'none';
   arrow.style.display = 'none'; textEl.textContent = '';
   for (const ch of s){
     if (skip){ textEl.textContent = s; break; }
@@ -284,8 +365,16 @@ async function run(){
   replayBtn.style.display = 'none';
   finale = false; confetti = []; alive = true;
   setColor(true); setMusic(true);
+  setScene(null);
   await wait(2500);
   dialog.classList.add('show');
+  await typeLine(INTRO); await pause(1200);
+  for (const f of FACTS){
+    setScene(f.scene);
+    for (const page of f.p){ await typeLine(page, f.h); await pause(3200); }
+  }
+  setScene(null);
+  await wait(1200);
   await typeLine(LINES[0]); await pause(2300);
   await typeLine(LINES[1]); await pause(2700);
   // ...todo se apaga: silencio
