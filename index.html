@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Para Giu ♥</title>
+<meta property="og:title" content="Para Giu ♥">
+<meta property="og:description" content="Presiona start ▶">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#0d0d1a;overflow:hidden;font-family:'Press Start 2P',monospace;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  #stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+  canvas{width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;filter:grayscale(1) brightness(.55);transition:filter 2.2s ease}
+  canvas.color{filter:none}
+  #dialog{position:absolute;left:4%;right:4%;top:71%;bottom:3%;background:#fff;color:#1b1b2f;
+    border:calc(var(--u)*1) solid #1b1b2f;box-shadow:0 0 0 calc(var(--u)*1) #fff, inset 0 0 0 calc(var(--u)*.5) #74acdf;
+    padding:calc(var(--u)*3);font-size:var(--fs);line-height:1.9;opacity:0;transition:opacity .6s}
+  #dialog.show{opacity:1}
+  #arrow{position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*2);animation:blink .8s steps(1) infinite;display:none}
+  #replay{position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*2.5);font:inherit;font-size:calc(var(--fs)*.8);
+    background:#74acdf;color:#fff;border:calc(var(--u)*.6) solid #1b1b2f;padding:calc(var(--u)*1.2) calc(var(--u)*2);display:none;cursor:pointer}
+  #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*7);
+    background:rgba(13,13,26,.82);color:#fff;text-align:center;cursor:pointer;font-size:var(--fs)}
+  #start .t1{font-size:calc(var(--fs)*1.6);color:#74acdf;text-shadow:calc(var(--u)*.6) calc(var(--u)*.6) 0 #f6b40e}
+  #start .heart{font-size:calc(var(--fs)*3);color:#ff5c8a;animation:pulse 1s steps(2) infinite}
+  #start .blink{animation:blink 1s steps(1) infinite}
+  #start .small{font-size:calc(var(--fs)*.65);opacity:.7}
+  #mute{position:absolute;top:calc(var(--u)*2);right:calc(var(--u)*2);font:inherit;font-size:var(--fs);background:rgba(27,27,47,.6);color:#fff;
+    border:calc(var(--u)*.5) solid #fff;width:calc(var(--u)*9);height:calc(var(--u)*9);display:none;cursor:pointer}
+  @keyframes blink{50%{opacity:0}}
+  @keyframes pulse{50%{transform:scale(1.2)}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="96" height="170"></canvas>
+  <div id="dialog"><span id="text"></span><span id="arrow">▼</span><button id="replay">▶ otra vez</button></div>
+  <button id="mute">♪</button>
+  <div id="start">
+    <div class="t1">PARA GIU</div>
+    <div class="heart">♥</div>
+    <div class="blink">PRESIONA START ▶</div>
+    <div class="small">sube el volumen 🔊</div>
+  </div>
+</div>
+
+<script>
+// ================== MENSAJE (edítalo aquí) ==================
+const LINES = [
+  "Alegría por ti, Giu.",
+  "Porque en esta vida, todo es mejor contigo cerca...",
+  "...y todo sería silencio sin ti.",
+  "— con amor, Alex ♥"
+];
+// ============================================================
+
+const W = 96, H = 170;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const stage = document.getElementById('stage');
+const dialog = document.getElementById('dialog'), textEl = document.getElementById('text');
+const arrow = document.getElementById('arrow'), replayBtn = document.getElementById('replay');
+const startEl = document.getElementById('start'), muteBtn = document.getElementById('mute');
+
+function fit(){
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  stage.style.width = W * s + 'px';
+  stage.style.height = H * s + 'px';
+  stage.style.setProperty('--u', s + 'px');
+  stage.style.setProperty('--fs', (W * s * 0.04) + 'px');
+}
+addEventListener('resize', fit); fit();
+
+// ---------- colores ----------
+const CEL = '#74acdf', WHT = '#ffffff', SUN = '#f6b40e', SUN2 = '#d98a00', PINK = '#ff5c8a';
+const BROWN = '#7a4a24', FACE = '#e9c29a', DARK = '#1b1b2f';
+
+// ---------- helpers de pixel ----------
+function px(x, y, w, h, c){ ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); }
+function sprite(rows, pal, x, y, s = 1){
+  for (let j = 0; j < rows.length; j++)
+    for (let i = 0; i < rows[j].length; i++){
+      const c = pal[rows[j][i]];
+      if (c) px(x + i * s, y + j * s, s, s, c);
+    }
+}
+
+// ---------- sprites originales ----------
+const MONKEY = [
+  "...HHHHHH...",
+  "..H.BBBB.H..",
+  ".H.BBBBBB.H.",
+  "HHBBBBBBBBHH",
+  "HHBFFBBFFBHH",
+  "HHFKFFFFKFHH",
+  ".BFFFFFFFFB.",
+  ".BFFFNNFFFB.",
+  "..BFMMMMFB..",
+  "...BFFFFB...",
+  "..BBBBBBBB..",
+  ".BB.BFFB.BB.",
+  ".B..BFFB..B.",
+  "...BB..BB..."
+];
+const MONKEY_PAL = { B: BROWN, F: FACE, K: DARK, N: '#5a3418', M: PINK, H: '#2b2b4a' };
+
+const CUP = [
+  "WWWWWWWWW...",
+  "WCCCCCCCW...",
+  "WWWWWWWWWWW.",
+  "WLLLLLLLW.W.",
+  "WWRWWWRWW.W.",
+  "WRRRWRRRWWW.",
+  "WWRRRRRWW...",
+  ".WWRRRWW....",
+  "SSSSRSSSSSS.",
+  ".SSSSSSSSS.."
+];
+const CUP_PAL = { W: WHT, C: '#5b3313', L: CEL, R: PINK, S: '#c9d3e0' };
+
+const HEART = [".XX.XX.", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X..."];
+const MINI_HEART = [".X.X.", "XXXXX", ".XXX.", "..X.."];
+const NOTE = ["..XX", "..X.", "..X.", "XXX.", "XX.."];
+
+// ---------- escena ----------
+let alive = false, finale = false;
+let particles = [], confetti = [];
+let lastSteam = 0, lastNote = 0;
+
+function sunOrHeart(cx, cy, t){
+  // rayos del sol de mayo, girando
+  const r = 7;
+  for (let i = 0; i < 16; i++){
+    const a = i * Math.PI / 8 + t * 0.25;
+    const len = i % 2 ? 12 : 15;
+    for (let d = r + 2; d < len; d++)
+      px(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 1, 1, i % 2 ? SUN2 : SUN);
+  }
+  if (!finale){
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++)
+        if (dx * dx + dy * dy <= r * r) px(cx + dx, cy + dy, 1, 1, SUN);
+    px(cx - 3, cy - 2, 1, 2, SUN2); px(cx + 2, cy - 2, 1, 2, SUN2);
+    px(cx - 3, cy + 2, 1, 1, SUN2); px(cx + 2, cy + 2, 1, 1, SUN2); px(cx - 2, cy + 3, 4, 1, SUN2);
+  } else {
+    const s = Math.sin(t * 6) > 0 ? 3 : 2;
+    sprite(HEART, { X: PINK }, cx - 3.5 * s, cy - 3 * s, s);
+  }
+}
+
+function cloud(x, y){
+  px(x + 3, y - 1, 5, 1, WHT); px(x + 1, y, 10, 1, WHT); px(x, y + 1, 13, 2, WHT);
+}
+
+function draw(t){
+  // bandera: celeste, blanco, celeste
+  px(0, 0, W, 35, CEL); px(0, 35, W, 35, WHT); px(0, 70, W, 36, CEL);
+  // nubes
+  for (let k = 0; k < 3; k++){
+    const x = ((t * (2 + k) + k * 40) % (W + 20)) - 16;
+    cloud(x, 8 + k * 9);
+  }
+  sunOrHeart(48, 52, t);
+
+  // mesa
+  px(0, 106, W, 3, '#a0683a'); px(0, 109, W, 9, '#6b4220');
+  for (let x = 4; x < W; x += 16) px(x, 111, 6, 1, '#5a3618');
+  px(0, 118, W, H - 118, DARK);
+
+  // monito con audífonos (bailando si hay música)
+  const bob = alive ? -Math.round(Math.abs(Math.sin(t * 4.6)) * 2) : 0;
+  sprite(MONKEY, MONKEY_PAL, 8, 106 - 28 + bob, 2);
+
+  // café
+  sprite(CUP, CUP_PAL, 62, 106 - 20, 2);
+
+  // partículas: vapor-corazón y notas
+  if (alive){
+    if (t - lastSteam > 0.7){ lastSteam = t; particles.push({ type: 'h', x: 68 + Math.random() * 6, y: 84, t0: t }); }
+    if (t - lastNote > 0.55){ lastNote = t; particles.push({ type: 'n', x: 30, y: 78, t0: t, dir: Math.random() < .5 ? 1 : -.3 }); }
+  }
+  particles = particles.filter(p => {
+    const age = t - p.t0;
+    if (p.type === 'h'){
+      p.y -= 0.22;
+      const x = p.x + Math.sin(age * 3) * 2;
+      sprite(MINI_HEART, { X: age % .4 < .2 ? PINK : '#ff8fb0' }, x, p.y);
+      return p.y > 38;
+    } else {
+      p.y -= 0.25; p.x += 0.12 * p.dir;
+      sprite(NOTE, { X: DARK }, p.x + Math.sin(age * 4) * 1.5, p.y);
+      return p.y > 30;
+    }
+  });
+
+  // confeti final
+  if (finale && confetti.length < 70) confetti.push(newConfetti(-2));
+  confetti = confetti.filter(c => {
+    c.y += c.v; c.x += Math.sin(c.y / 6 + c.ph) * 0.3;
+    px(c.x, c.y, c.w, 1, c.c);
+    return c.y < 118 || finale && (Object.assign(c, newConfetti(-2)), true);
+  });
+}
+
+function newConfetti(y){
+  const cols = [CEL, WHT, SUN, PINK];
+  return { x: Math.random() * W, y: y ?? Math.random() * 100, v: .3 + Math.random() * .5,
+           w: Math.random() < .5 ? 1 : 2, c: cols[Math.floor(Math.random() * cols.length)], ph: Math.random() * 6 };
+}
+function burst(){ for (let i = 0; i < 60; i++) confetti.push(newConfetti(Math.random() * 60 - 20)); }
+
+let t0 = performance.now();
+(function loop(now){
+  draw((now - t0) / 1000);
+  requestAnimationFrame(loop);
+})(t0);
+
+// ---------- música chiptune original ----------
+let ac, master, musicGain, nextTime = 0, step = 0, muted = false;
+const N = n => 440 * Math.pow(2, (n - 69) / 12);
+const MEL = [76,79,81,79, 76,74,72,74, 76,79,81,84, 83,81,79,0,
+             77,81,84,81, 79,76,74,76, 72,74,76,79, 76,74,72,0];
+const BASS = [48, 45, 41, 43];
+const EIGHTH = 0.27;
+
+function note(freq, t, dur, type, vol, dest){
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  o.connect(g); g.connect(dest);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+function schedule(){
+  while (nextTime < ac.currentTime + 0.15){
+    const m = MEL[step % 32];
+    if (m) note(N(m), nextTime, EIGHTH * 0.9, 'square', 0.045, musicGain);
+    if (step % 2 === 0) note(N(BASS[Math.floor(step / 8) % 4]), nextTime, EIGHTH * 1.8, 'triangle', 0.13, musicGain);
+    nextTime += EIGHTH; step++;
+  }
+}
+function initAudio(){
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain(); master.connect(ac.destination);
+  musicGain = ac.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
+  nextTime = ac.currentTime + 0.1;
+  setInterval(schedule, 40);
+}
+function setMusic(on){
+  const g = musicGain.gain, now = ac.currentTime;
+  g.cancelScheduledValues(now); g.setValueAtTime(g.value, now);
+  g.linearRampToValueAtTime(on ? 1 : 0, now + (on ? 1.5 : 1.2));
+}
+function blip(){
+  if (!ac) return;
+  note(700 + Math.random() * 200, ac.currentTime, 0.04, 'square', 0.025, master);
+}
+muteBtn.onclick = e => {
+  e.stopPropagation(); muted = !muted;
+  master.gain.value = muted ? 0 : 1; muteBtn.textContent = muted ? '✕' : '♪';
+};
+
+// ---------- diálogo ----------
+const wait = ms => new Promise(r => setTimeout(r, ms));
+let skip = false;
+dialog.onclick = () => { skip = true; };
+
+async function typeLine(s){
+  arrow.style.display = 'none'; textEl.textContent = '';
+  for (const ch of s){
+    if (skip){ textEl.textContent = s; break; }
+    textEl.textContent += ch;
+    if (ch !== ' ') blip();
+    await wait(55);
+  }
+  skip = false;
+}
+async function pause(ms){ arrow.style.display = 'inline'; await wait(ms); arrow.style.display = 'none'; }
+function setColor(on){ cv.classList.toggle('color', on); }
+
+async function run(){
+  replayBtn.style.display = 'none';
+  finale = false; confetti = []; alive = true;
+  setColor(true); setMusic(true);
+  await wait(2500);
+  dialog.classList.add('show');
+  await typeLine(LINES[0]); await pause(2300);
+  await typeLine(LINES[1]); await pause(2700);
+  // ...todo se apaga: silencio
+  alive = false; setColor(false); setMusic(false);
+  await wait(1300);
+  await typeLine(LINES[2]); await pause(2000);
+  // ...y vuelve todo, contigo
+  alive = true; finale = true; setColor(true); setMusic(true); burst();
+  await wait(1800);
+  await typeLine(LINES[3]);
+  await wait(800);
+  replayBtn.style.display = 'block';
+}
+
+startEl.onclick = () => {
+  initAudio(); ac.resume();
+  startEl.style.display = 'none'; muteBtn.style.display = 'block';
+  run();
+};
+replayBtn.onclick = e => { e.stopPropagation(); textEl.textContent = ''; run(); };
+</script>
+</body>
+</html>
