@@ -259,7 +259,7 @@ function blip(){
 }
 muteBtn.onclick = e => {
   e.stopPropagation(); muted = !muted;
-  master.gain.value = muted ? 0 : 1; muteBtn.textContent = muted ? '✕' : '♪';
+  master.gain.value = muted ? 0 : 1; muteBtn.textContent = muted ? '🔇' : '♪';
 };
 
 // ---------- diálogo ----------
@@ -300,7 +300,17 @@ async function run(){
   replayBtn.style.display = 'block';
 }
 
+// iPhone en modo silencio: forzar audio tipo "reproducción" para que suene igual
+function unlockIOS(){
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e) {}
+  try {
+    const a = new Audio('data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==');
+    a.loop = true; a.setAttribute('playsinline', ''); a.play().catch(()=>{});
+  } catch(e) {}
+}
+
 startEl.onclick = () => {
+  unlockIOS();
   initAudio(); ac.resume();
   startEl.style.display = 'none'; muteBtn.style.display = 'block';
   run();
